@@ -71,6 +71,7 @@ void disable_all_exti_it(void);
 void iot_send_credit(uint16_t credit);
 void iot_send_current_credit(uint16_t credit);
 void iot_send_mode(uint8_t mode);
+void iot_send_status(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -142,6 +143,7 @@ bool clearButton = false;
 bool cpuLedState = false;
 uint8_t clearButtonCounter = 0;
 uint8_t tim2_round_counter = 0;
+uint8_t iot_round_counter = 0;
 /* USER CODE END 0 */
 
 /**
@@ -459,6 +461,15 @@ void iot_send_mode(uint8_t mode){
 	HAL_UART_Transmit(&huart3, (uint8_t *)cmd_buffer, strlen(cmd_buffer), HAL_MAX_DELAY);
 #endif
 }
+void iot_send_status(){
+	char cmd_buffer[40];
+	sprintf(cmd_buffer,"$STAT_%d_%d$\r\n",(unsigned int)mode,(unsigned int)credit,);
+#ifdef DEBUG
+	HAL_UART_Transmit(&huart1, (uint8_t *)cmd_buffer, strlen(cmd_buffer), HAL_MAX_DELAY);
+#else
+	HAL_UART_Transmit(&huart3, (uint8_t *)cmd_buffer, strlen(cmd_buffer), HAL_MAX_DELAY);
+#endif
+}
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	if (htim->Instance == TIM4) { /// tick every 1s
 		max7219_Turn_On();
@@ -542,6 +553,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 			HAL_UART_Transmit(&huart1, (uint8_t*)"TIM2 TICK!!\r\n", 13, HAL_MAX_DELAY);
 			logic_runner();
 			tim2_round_counter = 0;
+			if(iot_round_counter > 15){
+				iot_send_status();
+				iot_round_counter = 0;
+			}else{
+				iot_round_counter += 1;
+			}
 		}else{
 			if((tim2_round_counter%3) == 0){
 				if (selected_button != 0) {
