@@ -43,7 +43,11 @@ i2c_test_c8t6.bin \
 
 
 # All Target
-all: i2c_test_c8t6.elf secondary-outputs
+all:
+	+@make --no-print-directory main-build && make --no-print-directory post-build
+
+# Main-build Target
+main-build: i2c_test_c8t6.elf secondary-outputs
 
 # Tool invocations
 i2c_test_c8t6.elf: $(OBJS) $(USER_OBJS) C:\Users\PrakobMinimart\Downloads\i2c_test_c8t6\STM32F103C8TX_FLASH.ld
@@ -71,9 +75,13 @@ clean:
 	-$(RM) *
 	-@echo ' '
 
+post-build:
+	arm-none-eabi-objcopy -O ihex i2c_test_c8t6.elf i2c_test_c8t6.hex
+	-@echo ' '
+
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST) $(OBJCOPY_BIN)
 
 .PHONY: all clean dependents
-.SECONDARY:
+.SECONDARY: post-build
 
 -include ../makefile.targets
