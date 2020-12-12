@@ -42,7 +42,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define EEPROM_ADDR 0xA0
-#define DEBUG 1
+#define DEBUG false
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -68,8 +68,7 @@ void set_substract_duration_of_function(uint8_t _selected_menu);
 void segment_display_off(void);
 void enable_all_exti_it(void);
 void disable_all_exti_it(void);
-void iot_send_credit(uint16_t credit);
-void iot_send_current_credit(uint16_t credit);
+void iot_send_inserted_credit(uint16_t inst_credit);
 void iot_send_mode(uint8_t mode);
 void iot_send_status(void);
 /* USER CODE END PFP */
@@ -434,41 +433,36 @@ void segment_display_off(){
 	max7219_PrintDigit(DIGIT_2,BLANK,false);
 	max7219_PrintDigit(DIGIT_3,BLANK,false);
 }
-void iot_send_credit(uint16_t credit){
-	char cmd_buffer[25];
-	sprintf(cmd_buffer,"$CRIN_%d$\r\n",(unsigned int)credit);
-#ifdef DEBUG
-	HAL_UART_Transmit(&huart1, (uint8_t *)cmd_buffer, strlen(cmd_buffer), HAL_MAX_DELAY);
-#else
-	HAL_UART_Transmit(&huart3, (uint8_t *)cmd_buffer, strlen(cmd_buffer), HAL_MAX_DELAY);
-#endif
-}
-void iot_send_current_credit(uint16_t credit){
-	char cmd_buffer[25];
-	sprintf(cmd_buffer,"$CURC_%d$\r\n",(unsigned int)credit);
-#ifdef DEBUG
-	HAL_UART_Transmit(&huart1, (uint8_t *)cmd_buffer, strlen(cmd_buffer), HAL_MAX_DELAY);
-#else
-	HAL_UART_Transmit(&huart3, (uint8_t *)cmd_buffer, strlen(cmd_buffer), HAL_MAX_DELAY);
-#endif
+
+void iot_send_inserted_credit(uint16_t inst_credit){
+	char cmd_buffer[35];
+	sprintf(cmd_buffer,"%cINST_%d_%d%c\r\n",0x02,(unsigned int)credit,(unsigned int)inst_credit,0x03);
+	if(DEBUG){
+		HAL_UART_Transmit(&huart1, (uint8_t *)cmd_buffer, strlen(cmd_buffer), HAL_MAX_DELAY);
+	}else{
+		HAL_UART_Transmit(&huart1, (uint8_t *)cmd_buffer, strlen(cmd_buffer), HAL_MAX_DELAY);
+		HAL_UART_Transmit(&huart3, (uint8_t *)cmd_buffer, strlen(cmd_buffer), HAL_MAX_DELAY);
+	}
 }
 void iot_send_mode(uint8_t mode){
-	char cmd_buffer[25];
-	sprintf(cmd_buffer,"$MODE_%d$\r\n",(unsigned int)mode);
-#ifdef DEBUG
-	HAL_UART_Transmit(&huart1, (uint8_t *)cmd_buffer, strlen(cmd_buffer), HAL_MAX_DELAY);
-#else
-	HAL_UART_Transmit(&huart3, (uint8_t *)cmd_buffer, strlen(cmd_buffer), HAL_MAX_DELAY);
-#endif
+	char cmd_buffer[35];
+	sprintf(cmd_buffer,"%cMODE_%d_%d%c\r\n",0x02,(unsigned int)credit,(unsigned int)mode,0x03);
+	if(DEBUG){
+		HAL_UART_Transmit(&huart1, (uint8_t *)cmd_buffer, strlen(cmd_buffer), HAL_MAX_DELAY);
+	}else{
+		HAL_UART_Transmit(&huart1, (uint8_t *)cmd_buffer, strlen(cmd_buffer), HAL_MAX_DELAY);
+		HAL_UART_Transmit(&huart3, (uint8_t *)cmd_buffer, strlen(cmd_buffer), HAL_MAX_DELAY);
+	}
 }
 void iot_send_status(){
-	char cmd_buffer[40];
-	sprintf(cmd_buffer,"$STAT_%d_%d$\r\n",(unsigned int)mode,(unsigned int)credit,);
-#ifdef DEBUG
-	HAL_UART_Transmit(&huart1, (uint8_t *)cmd_buffer, strlen(cmd_buffer), HAL_MAX_DELAY);
-#else
-	HAL_UART_Transmit(&huart3, (uint8_t *)cmd_buffer, strlen(cmd_buffer), HAL_MAX_DELAY);
-#endif
+	char cmd_buffer[35];
+	sprintf(cmd_buffer,"%cSTAT_%d%c\r\n",0x02,(unsigned int)credit,0x03);
+	if(DEBUG){
+		HAL_UART_Transmit(&huart1, (uint8_t *)cmd_buffer, strlen(cmd_buffer), HAL_MAX_DELAY);
+	}else{
+		HAL_UART_Transmit(&huart1, (uint8_t *)cmd_buffer, strlen(cmd_buffer), HAL_MAX_DELAY);
+		HAL_UART_Transmit(&huart3, (uint8_t *)cmd_buffer, strlen(cmd_buffer), HAL_MAX_DELAY);
+	}
 }
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	if (htim->Instance == TIM4) { /// tick every 1s
@@ -535,17 +529,17 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 		}
 	}
 	if (htim->Instance == TIM2) { /// tick every 1ms
-//		HAL_UART_Transmit(&huart1, (uint8_t*)"TIM2 TICK!!\r\n", 13, HAL_MAX_DELAY);
+		//		HAL_UART_Transmit(&huart1, (uint8_t*)"TIM2 TICK!!\r\n", 13, HAL_MAX_DELAY);
 		char credit_tmp_msg[55];
 		if(last_credit_insert > 0){
-			iot_send_credit(last_credit_insert);
 			sprintf(credit_tmp_msg,"last credit inserted: %d \r\n",(unsigned int)last_credit_insert);
+			iot_send_inserted_credit(last_credit_insert);
 			HAL_UART_Transmit(&huart1,(uint8_t *)credit_tmp_msg, strlen(credit_tmp_msg), HAL_MAX_DELAY);
 			last_credit_insert = 0;
 		}
 		if(last_credit_insert_bank > 0){
-			iot_send_credit(last_credit_insert);
 			sprintf(credit_tmp_msg,"last bank credit inserted: %d \r\n",(unsigned int)last_credit_insert_bank);
+			iot_send_inserted_credit(last_credit_insert_bank);
 			HAL_UART_Transmit(&huart1,(uint8_t *)credit_tmp_msg, strlen(credit_tmp_msg), HAL_MAX_DELAY);
 			last_credit_insert_bank = 0;
 		}
@@ -553,7 +547,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 			HAL_UART_Transmit(&huart1, (uint8_t*)"TIM2 TICK!!\r\n", 13, HAL_MAX_DELAY);
 			logic_runner();
 			tim2_round_counter = 0;
-			if(iot_round_counter > 15){
+			if(iot_round_counter > 30){
 				iot_send_status();
 				iot_round_counter = 0;
 			}else{
@@ -911,7 +905,6 @@ void add_bank_note_credit(uint32_t pulse_width) {
 }
 
 void logic_runner() {
-	iot_send_current_credit(credit);
 	eeprom_write(0x06,credit);
 	if (selected_button != 0) {
 		logic_runner_round_counter += 1;
@@ -1054,7 +1047,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 
 			else if (coin_IC_Val1 > coin_IC_Val2) {
 				coin_Difference = ((uint16_t) 0xffff - coin_IC_Val1)
-																																																																																																						+ coin_IC_Val2;
+																																																																																																										+ coin_IC_Val2;
 			}
 			coin_Is_First_Captured = 0; // set it back to false
 			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_2,
