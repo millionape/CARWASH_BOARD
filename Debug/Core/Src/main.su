@@ -20,7 +20,7 @@ main.c:815:6:set_substract_duration_of_function	16	static
 main.c:851:6:add_coin_credit	88	static
 main.c:877:6:add_bank_note_credit	128	static
 main.c:907:6:logic_runner	8	static
-main.c:958:6:serial_display_credit	48	static
-main.c:963:6:stop_and_clear_tim1	8	static
-main.c:968:6:HAL_TIM_IC_CaptureCallback	56	static
-main.c:1074:6:Error_Handler	4	static
+main.c:960:6:serial_display_credit	48	static
+main.c:965:6:stop_and_clear_tim1	8	static
+main.c:970:6:HAL_TIM_IC_CaptureCallback	56	static
+main.c:1076:6:Error_Handler	4	static

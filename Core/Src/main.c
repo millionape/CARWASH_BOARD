@@ -816,31 +816,31 @@ void set_substract_duration_of_function(uint8_t _selected_menu){
 	if(_selected_menu > 0){
 		switch (_selected_menu) {
 		case 1:
-			if(F1_DURATION >1){
+			if(F1_DURATION >0){
 				F1_DURATION -= 1;
 				eeprom_write(0x01,F1_DURATION);
 			}
 			break;
 		case 2:
-			if(F2_DURATION >1){
+			if(F2_DURATION >0){
 				F2_DURATION -= 1;
 				eeprom_write(0x02,F2_DURATION);
 			}
 			break;
 		case 3:
-			if(F3_DURATION >1){
+			if(F3_DURATION >0){
 				F3_DURATION -= 1;
 				eeprom_write(0x03,F3_DURATION);
 			}
 			break;
 		case 4:
-			if(F4_DURATION >1){
+			if(F4_DURATION >0){
 				F4_DURATION -= 1;
 				eeprom_write(0x04,F4_DURATION);
 			}
 			break;
 		case 5:
-			if(F5_DURATION >1){
+			if(F5_DURATION >0){
 				F5_DURATION -= 1;
 				eeprom_write(0x05,F5_DURATION);
 			}
@@ -929,18 +929,20 @@ void logic_runner() {
 		duration_per_1credit = 10;
 		break;
 	}
-
-	if (logic_runner_round_counter >= duration_per_1credit && credit > 0) {
-		logic_runner_round_counter = 0;
-		HAL_UART_Transmit(&huart1, (uint8_t *)"took 1 credit\r\n", 15, HAL_MAX_DELAY);
-		credit -= 1;
-		if(credit < 255){
-			//			eeprom_write(0x06,credit);
-			HAL_UART_Transmit(&huart1, (uint8_t *)"writing credit value\r\n", 22,
-					HAL_MAX_DELAY);
+	if(duration_per_1credit != 0){
+		if (logic_runner_round_counter >= duration_per_1credit && credit > 0) {
+			logic_runner_round_counter = 0;
+			HAL_UART_Transmit(&huart1, (uint8_t *)"took 1 credit\r\n", 15, HAL_MAX_DELAY);
+			credit -= 1;
+			if(credit < 255){
+				//			eeprom_write(0x06,credit);
+				HAL_UART_Transmit(&huart1, (uint8_t *)"writing credit value\r\n", 22,
+						HAL_MAX_DELAY);
+			}
+			serial_display_credit();
 		}
-		serial_display_credit();
 	}
+
 	if (credit <= 0) {
 		//		segment_display_standby();
 		reset_all_output();
@@ -1047,7 +1049,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 
 			else if (coin_IC_Val1 > coin_IC_Val2) {
 				coin_Difference = ((uint16_t) 0xffff - coin_IC_Val1)
-																																																																																																										+ coin_IC_Val2;
+																																																																																																												+ coin_IC_Val2;
 			}
 			coin_Is_First_Captured = 0; // set it back to false
 			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_2,
