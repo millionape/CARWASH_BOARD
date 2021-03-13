@@ -305,6 +305,11 @@ void read_settings_from_eeprom(void){
 		HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR3, default_credit_duration);
 		HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR4, default_credit_duration);
 		HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR5, default_credit_duration);
+		F1_DURATION = default_credit_duration;
+		F2_DURATION = default_credit_duration;
+		F3_DURATION = default_credit_duration;
+		F4_DURATION = default_credit_duration;
+		F5_DURATION = default_credit_duration;
 	}
 }
 void reset_all_output(void){
