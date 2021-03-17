@@ -44,6 +44,8 @@ static uint32_t lcdPow10(uint8_t n);
 
 void max7219_Init(uint8_t intensivity)
 {
+	max7219_Turn_Off();
+	max7219_DisableDisplayTest();
 	max7219_Turn_On();
 	max7219_SendData(REG_SCAN_LIMIT, NUMBER_OF_DIGITS - 1);
 	max7219_SetIntensivity(intensivity);
@@ -58,6 +60,11 @@ void max7219_SetIntensivity(uint8_t intensivity)
 	}
 
 	max7219_SendData(REG_INTENSITY, intensivity);
+}
+
+void max7219_DisableDisplayTest()
+{
+	max7219_SendData(REG_DISPLAY_TEST, REG_NO_OP);
 }
 
 void max7219_Clean()
@@ -85,11 +92,13 @@ void max7219_SendData(uint8_t addr, uint8_t data)
 
 void max7219_Turn_On(void)
 {
+	max7219_DisableDisplayTest();
 	max7219_SendData(REG_SHUTDOWN, 0x01);
 }
 
 void max7219_Turn_Off(void)
 {
+	max7219_DisableDisplayTest();
 	max7219_SendData(REG_SHUTDOWN, 0x00);
 }
 
@@ -107,6 +116,7 @@ void max7219_Decode_Off(void)
 
 void max7219_PrintDigit(MAX7219_Digits position, MAX7219_Numeric numeric, bool point)
 {
+	max7219_DisableDisplayTest();
 	if(position > NUMBER_OF_DIGITS)
 	{
 		return;
@@ -138,6 +148,7 @@ void max7219_PrintDigit(MAX7219_Digits position, MAX7219_Numeric numeric, bool p
 
 MAX7219_Digits max7219_PrintItos(MAX7219_Digits position, int value)
 {
+	max7219_DisableDisplayTest();
 	max7219_SendData(REG_DECODE_MODE, 0xFF);
 
 	int32_t i;

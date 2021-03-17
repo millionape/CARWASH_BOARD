@@ -102,7 +102,7 @@ volatile bool displayToggle = true;
 
 volatile uint8_t bank_acceptor_pulse_width = 33;
 volatile uint8_t coin_acceptor_pulse_width = 40;
-uint8_t creditPulseOffset = 10;
+uint8_t creditPulseOffset = 15;
 
 volatile uint8_t bank_credit_per_pulse = 10;
 volatile uint8_t coin_credit_per_pulse = 1;
@@ -124,8 +124,8 @@ volatile uint32_t burst_counter = 0;
 volatile uint32_t burst_counter_2 = 0;
 volatile bool start_debounce_counter = false;
 volatile bool start_debounce_counter2 = false;
-uint32_t lastTimePress = 0;
-uint32_t lastCoinTick = 0;
+volatile uint32_t lastTimePress = 0;
+volatile uint32_t lastCoinTick = 0;
 char dev_id_buffer[30];
 uint16_t last_credit_insert = 0;
 uint16_t last_credit_insert_bank = 0;
@@ -136,13 +136,11 @@ volatile uint8_t data_to_write = 14;
 volatile char data_to_read[20];
 
 volatile uint8_t data_read = 0;
-uint8_t standby_counter = 0;
-uint8_t loop_counter = 0;
-bool clearButton = false;
-bool cpuLedState = false;
-uint8_t clearButtonCounter = 0;
-uint8_t tim2_round_counter = 0;
-uint8_t iot_round_counter = 0;
+volatile uint8_t standby_counter = 0;
+volatile bool clearButton = false;
+volatile uint8_t clearButtonCounter = 0;
+volatile uint8_t tim2_round_counter = 0;
+volatile uint8_t iot_round_counter = 0;
 /* USER CODE END 0 */
 
 /**
@@ -185,14 +183,16 @@ int main(void)
 	HAL_Delay(400);
 	read_settings_from_eeprom();
 	HAL_Delay(400);
-	max7219_Init ( 7 );
-	max7219_Decode_On ();
 	HAL_TIM_Base_Stop_IT(&htim2);
+	HAL_TIM_Base_Stop_IT(&htim4);
+	HAL_TIM_Base_Stop_IT(&htim1);
+	max7219_DisableDisplayTest();
+	HAL_Delay(400);
+	max7219_Init ( 5 );
+	max7219_Decode_On ();
 	HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1);
 	HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_2);
 	HAL_TIM_Base_Start_IT(&htim2);
-	HAL_TIM_Base_Stop_IT(&htim4);
-	HAL_TIM_Base_Stop_IT(&htim1);
 	__HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
 	__HAL_TIM_SET_COUNTER(&htim1, 0);
 	DEV_ID =  HAL_GetDEVID();
@@ -200,13 +200,6 @@ int main(void)
 
 	sprintf(dev_id_buffer, "$DVID%d-%d&\r\n",(int)DEV_ID,(int)REV_ID);
 	HAL_UART_Transmit(&huart1, (uint8_t *)dev_id_buffer, strlen(dev_id_buffer), HAL_MAX_DELAY);
-
-	//	F1_DURATION = HAL_RTCEx_BKUPRead(&hrtc, RTC_BKP_DR1);
-	//
-	//	loop_counter = F1_DURATION;
-	//	char buffer1[25];
-	//	sprintf(buffer1, "F1 DURATION :%d\r\n",F1_DURATION);
-	//	HAL_UART_Transmit(&huart1, (uint8_t *)buffer1, strlen(buffer1), HAL_MAX_DELAY);
 
 	/* USER CODE END 2 */
 
@@ -246,7 +239,7 @@ void SystemClock_Config(void)
 	RCC_OscInitStruct.LSIState = RCC_LSI_ON;
 	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
 	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-	RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL6;
+	RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL8;
 	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
 	{
 		Error_Handler();
@@ -260,7 +253,7 @@ void SystemClock_Config(void)
 	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
 	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
+	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
 	{
 		Error_Handler();
 	}
@@ -311,6 +304,7 @@ void read_settings_from_eeprom(void){
 		F4_DURATION = default_credit_duration;
 		F5_DURATION = default_credit_duration;
 	}
+	HAL_Delay(300);
 }
 void reset_all_output(void){
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET); // pin b0 --> out 1
@@ -632,6 +626,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	}else{
 		lastTimePress = tickstart;
 	}
+	max7219_DisableDisplayTest();
 	HAL_UART_Transmit(&huart1, (uint8_t*)tick_msg, strlen(tick_msg),
 			HAL_MAX_DELAY);
 	if (GPIO_Pin == GPIO_PIN_2 && HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 1) {
@@ -854,6 +849,7 @@ void set_substract_duration_of_function(uint8_t _selected_menu){
 	}
 }
 void add_coin_credit(uint32_t pulse_width) {
+	max7219_DisableDisplayTest();
 	if (pulse_width <= (coin_acceptor_pulse_width + creditPulseOffset)
 			&& (pulse_width
 					>= coin_acceptor_pulse_width - creditPulseOffset)) {
@@ -880,6 +876,7 @@ void add_coin_credit(uint32_t pulse_width) {
 	}
 }
 void add_bank_note_credit(uint32_t pulse_width) {
+	max7219_DisableDisplayTest();
 	if (pulse_width <= bank_acceptor_pulse_width + creditPulseOffset
 			&& pulse_width
 			>= bank_acceptor_pulse_width - creditPulseOffset) {
@@ -911,6 +908,7 @@ void add_bank_note_credit(uint32_t pulse_width) {
 
 void logic_runner() {
 	eeprom_write(0x06,credit);
+	max7219_DisableDisplayTest();
 	if (selected_button != 0) {
 		logic_runner_round_counter += 1;
 	}
@@ -975,7 +973,7 @@ void stop_and_clear_tim1() {
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 	//	HAL_UART_Transmit(&huart2, message3, strlen(message3), HAL_MAX_DELAY);
 	//	stop_and_clear_tim1();
-	max7219_Turn_On();
+	//	max7219_Turn_On();
 	HAL_TIM_Base_Stop_IT(&htim2);
 	__HAL_TIM_SET_COUNTER(&htim2, 0);
 	__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_UPDATE);
@@ -991,13 +989,6 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 		{
 			IC_Val1 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1); // read the first value
 			Is_First_Captured = 1;  // set the first captured as true
-			// Now change the polarity to falling edge
-			/*
-			 (((__CHANNEL__) == TIM_CHANNEL_1) ? ((__HANDLE__)->Instance->CCER &= (uint16_t)~(TIM_CCER_CC1P | TIM_CCER_CC1NP)) :\
-				 ((__CHANNEL__) == TIM_CHANNEL_2) ? ((__HANDLE__)->Instance->CCER &= (uint16_t)~(TIM_CCER_CC2P | TIM_CCER_CC2NP)) :\
-				 ((__CHANNEL__) == TIM_CHANNEL_3) ? ((__HANDLE__)->Instance->CCER &= (uint16_t)~(TIM_CCER_CC3P | TIM_CCER_CC3NP)) :\
-				 ((__HANDLE__)->Instance->CCER &= (uint16_t)~TIM_CCER_CC4P))*/
-
 			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1,
 					TIM_INPUTCHANNELPOLARITY_FALLING);
 		}
@@ -1006,9 +997,6 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 		{
 			IC_Val2 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1); // read second value
 			__HAL_TIM_SET_COUNTER(htim, 0);  // reset the counter
-			//			burst_bank_credit += bank_credit_per_pulse;
-			//			burst_counter = 0;
-			//			start_debounce_counter = true;
 			if (IC_Val2 > IC_Val1) {
 				Difference = IC_Val2 - IC_Val1;
 			}
@@ -1026,15 +1014,11 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 			char tmpp[35];
 			sprintf(tmpp,"CH1:captured val : %d \r\n",(int)Difference);
 			HAL_UART_Transmit(&huart1, (uint8_t*)tmpp, strlen(tmpp), HAL_MAX_DELAY);
-			//			__HAL_TIM_DISABLE_IT(&htim3, TIM_IT_CC1);
-			//			__HAL_TIM_ENABLE_IT(&htim3, TIM_IT_CC1);
 		}
 	}
 	if (htim->Instance == TIM3
 			&& htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2) { // if the interrupt source is channel1
 		HAL_UART_Transmit(&huart1, (uint8_t*)"CH2 INT\r\n", 9, HAL_MAX_DELAY);
-		HAL_TIM_Base_Stop_IT(&htim2);
-		HAL_TIM_Base_Stop_IT(&htim1);
 		if (coin_Is_First_Captured == 0) // if the first value is not captured
 		{
 			coin_IC_Val1 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2); // read the first value
@@ -1054,7 +1038,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 
 			else if (coin_IC_Val1 > coin_IC_Val2) {
 				coin_Difference = ((uint16_t) 0xffff - coin_IC_Val1)
-																																																																																																												+ coin_IC_Val2;
+																																																																																																																						+ coin_IC_Val2;
 			}
 			coin_Is_First_Captured = 0; // set it back to false
 			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_2,
@@ -1064,12 +1048,10 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 			char tmpp[35];
 			sprintf(tmpp,"CH2:captured val : %d \r\n",(int)coin_Difference);
 			HAL_UART_Transmit(&huart1, (uint8_t*)tmpp, strlen(tmpp), HAL_MAX_DELAY);
-
-			// set polarity to rising edge
-			//			__HAL_TIM_DISABLE_IT(&htim3, TIM_IT_CC2);
-			//			__HAL_TIM_ENABLE_IT(&htim3, TIM_IT_CC2);
 		}
 	}
+	__HAL_TIM_DISABLE_IT(&htim3, TIM_IT_CC2);
+	__HAL_TIM_ENABLE_IT(&htim3, TIM_IT_CC2);
 	HAL_TIM_Base_Start_IT(&htim2);
 }
 /* USER CODE END 4 */

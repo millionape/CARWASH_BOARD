@@ -65,6 +65,7 @@ void max7219_Turn_On(void);
 void max7219_Turn_Off(void);
 void max7219_Decode_On(void);
 void max7219_Decode_Off(void);
+void max7219_DisableDisplayTest(void);
 void max7219_PrintDigit(MAX7219_Digits position, MAX7219_Numeric numeric, bool point);
 MAX7219_Digits max7219_PrintItos(MAX7219_Digits position, int value);
 MAX7219_Digits max7219_PrintNtos(MAX7219_Digits position, uint32_t value, uint8_t n);
