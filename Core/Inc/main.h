@@ -60,6 +60,8 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define LED_PIN_Pin GPIO_PIN_13
 #define LED_PIN_GPIO_Port GPIOC
+#define SAFETY_PIN_Pin GPIO_PIN_1
+#define SAFETY_PIN_GPIO_Port GPIOA
 #define USER_SW2_Pin GPIO_PIN_2
 #define USER_SW2_GPIO_Port GPIOA
 #define USER_SW2_EXTI_IRQn EXTI2_IRQn
@@ -88,6 +90,10 @@ void Error_Handler(void);
 #define MAX7219_CS_GPIO_Port GPIOB
 #define OUT_PIN3_Pin GPIO_PIN_8
 #define OUT_PIN3_GPIO_Port GPIOA
+#define ALIVE_LED_Pin GPIO_PIN_11
+#define ALIVE_LED_GPIO_Port GPIOA
+#define DEBUG_LED_Pin GPIO_PIN_12
+#define DEBUG_LED_GPIO_Port GPIOA
 #define USER_SW3_Pin GPIO_PIN_15
 #define USER_SW3_GPIO_Port GPIOA
 #define OUT_PIN4_Pin GPIO_PIN_8

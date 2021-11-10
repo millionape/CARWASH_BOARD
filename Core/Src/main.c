@@ -72,6 +72,8 @@ void disable_all_exti_it(void);
 void iot_send_inserted_credit(uint16_t inst_credit);
 void iot_send_mode(uint8_t mode);
 void iot_send_status(void);
+bool isButtonBusy(void);
+uint8_t decodeSwithPin(uint16_t GPIO_Pin);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -142,6 +144,7 @@ volatile bool clearButton = false;
 volatile uint8_t clearButtonCounter = 0;
 volatile uint8_t tim2_round_counter = 0;
 volatile uint8_t iot_round_counter = 0;
+bool ignoreButtonBusy = false;
 /* USER CODE END 0 */
 
 /**
@@ -202,6 +205,11 @@ int main(void)
 
 	sprintf(dev_id_buffer, "$DVID%d-%d&\r\n",(int)DEV_ID,(int)REV_ID);
 	HAL_UART_Transmit(&huart1, (uint8_t *)dev_id_buffer, strlen(dev_id_buffer), HAL_MAX_DELAY);
+	if(HAL_GPIO_ReadPin(GPIOA, SAFETY_PIN_Pin) == 1){
+		ignoreButtonBusy = true;
+	}else{
+		ignoreButtonBusy = false;
+	}
 
 	/* USER CODE END 2 */
 
@@ -218,6 +226,7 @@ int main(void)
 			credit = 0;
 			system_function_start = false;
 		}
+		HAL_GPIO_TogglePin(GPIOA, ALIVE_LED_Pin);
 	}
 	/* USER CODE END 3 */
 }
@@ -615,6 +624,28 @@ void enable_all_exti_it(){
 	HAL_NVIC_EnableIRQ(EXTI4_IRQn);
 	HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 }
+uint8_t decodeSwithPin(uint16_t GPIO_Pin){
+	switch (GPIO_Pin) {
+	case GPIO_PIN_3:
+		return 3;
+		break;
+	case GPIO_PIN_4:
+		return 4;
+		break;
+	case GPIO_PIN_5:
+		return 5;
+		break;
+	case GPIO_PIN_6:
+		return 6;
+		break;
+	case GPIO_PIN_7:
+		return 7;
+		break;
+	default:
+		return 0;
+		break;
+	}
+}
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	disable_all_exti_it();
 	char message_sw2[] = "Switch [2] pressed!\r\n";
@@ -658,6 +689,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 		}
 	}
 	else if (system_function_start) {
+		if(isButtonBusy()){
+			if(decodeSwithPin(GPIO_Pin) != selected_button){
+				enable_all_exti_it();
+				return;
+			}
+		}
+
 		HAL_TIM_Base_Stop_IT(&htim2);
 		HAL_TIM_Base_Stop_IT(&htim1);
 		__HAL_TIM_SET_COUNTER(&htim1, 0);
@@ -673,8 +711,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 					selected_button = 0;
 					reset_all_output();
 				} else {
-					reset_all_output();
-					selected_button = 3;
+					if(!isButtonBusy()){
+						reset_all_output();
+						selected_button = 3;
+					}
 				}
 			}
 			break;
@@ -686,8 +726,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 					selected_button = 0;
 					reset_all_output();
 				} else {
-					reset_all_output();
-					selected_button = 4;
+					if(!isButtonBusy()){
+						reset_all_output();
+						selected_button = 4;
+					}
 				}
 			}
 			break;
@@ -699,8 +741,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 					selected_button = 0;
 					reset_all_output();
 				} else {
-					reset_all_output();
-					selected_button = 5;
+					if(!isButtonBusy()){
+						reset_all_output();
+						selected_button = 5;
+					}
 				}
 			}
 			break;
@@ -712,8 +756,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 					reset_all_output();
 					selected_button = 0;
 				} else {
-					reset_all_output();
-					selected_button = 6;
+					if(!isButtonBusy()){
+						reset_all_output();
+						selected_button = 6;
+					}
 				}
 			}
 			break;
@@ -727,8 +773,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 					clearButton = true;
 					HAL_TIM_Base_Start_IT(&htim4);
 				} else {
-					reset_all_output();
-					selected_button = 7;
+					if(!isButtonBusy()){
+						reset_all_output();
+						selected_button = 7;
+					}
 				}
 			}
 			break;
@@ -740,6 +788,16 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	//	}
 	enable_all_exti_it();
 	HAL_TIM_Base_Start_IT(&htim1);
+}
+bool isButtonBusy(){
+	if(ignoreButtonBusy == true){
+		return false;
+	}
+	if(selected_button != 0){
+		return true;
+	}else{
+		return false;
+	}
 }
 void eeprom_write(uint8_t addr, uint8_t data){
 	/*
@@ -989,19 +1047,19 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 	__HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
 
 
-	if (htim->Instance == TIM3 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1) { // if the interrupt source is channel1
-		HAL_UART_Transmit(&huart1, (uint8_t*)"CH1 INT\r\n", 9, HAL_MAX_DELAY);
+	if (htim->Instance == TIM3 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2) { // if the interrupt source is channel1
+		HAL_UART_Transmit(&huart1, (uint8_t*)"CH2 INT\r\n", 9, HAL_MAX_DELAY);
 		if (Is_First_Captured == 0) // if the first value is not captured
 		{
-			IC_Val1 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1); // read the first value
+			IC_Val1 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2); // read the first value
 			Is_First_Captured = 1;  // set the first captured as true
-			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1,
+			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_2,
 					TIM_INPUTCHANNELPOLARITY_FALLING);
 		}
 
 		else if (Is_First_Captured == 1)   // if the first is already captured
 		{
-			IC_Val2 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1); // read second value
+			IC_Val2 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2); // read second value
 			__HAL_TIM_SET_COUNTER(htim, 0);  // reset the counter
 			if (IC_Val2 > IC_Val1) {
 				Difference = IC_Val2 - IC_Val1;
@@ -1012,31 +1070,31 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 			}
 			Is_First_Captured = 0; // set it back to false
 			// set polarity to rising edge
-			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1,
+			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_2,
 					TIM_INPUTCHANNELPOLARITY_RISING);
 
 			add_bank_note_credit(Difference/1000);
 			last_credit_insert_bank += bank_credit_per_pulse;
 			char tmpp[35];
-			sprintf(tmpp,"CH1:captured val : %d \r\n",(int)Difference);
+			sprintf(tmpp,"CH2:captured val : %d \r\n",(int)Difference);
 			HAL_UART_Transmit(&huart1, (uint8_t*)tmpp, strlen(tmpp), HAL_MAX_DELAY);
 		}
 	}
 	if (htim->Instance == TIM3
-			&& htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2) { // if the interrupt source is channel1
-		HAL_UART_Transmit(&huart1, (uint8_t*)"CH2 INT\r\n", 9, HAL_MAX_DELAY);
+			&& htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1) { // if the interrupt source is channel1
+		HAL_UART_Transmit(&huart1, (uint8_t*)"CH1 INT\r\n", 9, HAL_MAX_DELAY);
 		if (coin_Is_First_Captured == 0) // if the first value is not captured
 		{
-			coin_IC_Val1 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2); // read the first value
+			coin_IC_Val1 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1); // read the first value
 			coin_Is_First_Captured = 1;  // set the first captured as true
 
-			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_2,
+			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1,
 					TIM_INPUTCHANNELPOLARITY_FALLING);
 		}
 
 		else if (coin_Is_First_Captured == 1) // if the first is already captured
 		{
-			coin_IC_Val2 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2); // read second value
+			coin_IC_Val2 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1); // read second value
 			__HAL_TIM_SET_COUNTER(htim, 0);  // reset the counter
 			if (coin_IC_Val2 > coin_IC_Val1) {
 				coin_Difference = coin_IC_Val2 - coin_IC_Val1;
@@ -1046,12 +1104,12 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 				coin_Difference = ((uint16_t) 0xffff - coin_IC_Val1) + coin_IC_Val2;
 			}
 			coin_Is_First_Captured = 0; // set it back to false
-			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_2,
+			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1,
 					TIM_INPUTCHANNELPOLARITY_RISING);
 			add_coin_credit(coin_Difference/1000);
 			last_credit_insert += coin_credit_per_pulse;
 			char tmpp[35];
-			sprintf(tmpp,"CH2:captured val : %d \r\n",(int)coin_Difference);
+			sprintf(tmpp,"CH1:captured val : %d \r\n",(int)coin_Difference);
 			HAL_UART_Transmit(&huart1, (uint8_t*)tmpp, strlen(tmpp), HAL_MAX_DELAY);
 		}
 	}
