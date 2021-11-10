@@ -50,6 +50,9 @@ default.size.stdout \
 OBJDUMP_LIST += \
 i2c_test_c8t6.list \
 
+OBJCOPY_HEX += \
+i2c_test_c8t6.hex \
+
 OBJCOPY_BIN += \
 i2c_test_c8t6.bin \
 
@@ -77,6 +80,11 @@ i2c_test_c8t6.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 	@echo 'Finished building: $@'
 	@echo ' '
 
+i2c_test_c8t6.hex: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objcopy  -O ihex $(EXECUTABLES) "i2c_test_c8t6.hex"
+	@echo 'Finished building: $@'
+	@echo ' '
+
 i2c_test_c8t6.bin: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 	arm-none-eabi-objcopy  -O binary $(EXECUTABLES) "i2c_test_c8t6.bin"
 	@echo 'Finished building: $@'
@@ -84,14 +92,14 @@ i2c_test_c8t6.bin: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 
 # Other Targets
 clean:
-	-$(RM) $(SIZE_OUTPUT)$(OBJDUMP_LIST)$(EXECUTABLES)$(OBJS)$(S_DEPS)$(S_UPPER_DEPS)$(C_DEPS)$(OBJCOPY_BIN) i2c_test_c8t6.elf
+	-$(RM) $(OBJCOPY_HEX)$(SIZE_OUTPUT)$(OBJDUMP_LIST)$(EXECUTABLES)$(OBJS)$(S_DEPS)$(S_UPPER_DEPS)$(C_DEPS)$(OBJCOPY_BIN) i2c_test_c8t6.elf
 	-@echo ' '
 
 post-build:
 	arm-none-eabi-objcopy -O ihex i2c_test_c8t6.elf i2c_test_c8t6.hex
 	-@echo ' '
 
-secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST) $(OBJCOPY_BIN)
+secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST) $(OBJCOPY_HEX) $(OBJCOPY_BIN)
 
 fail-specified-linker-script-missing:
 	@echo 'Error: Cannot find the specified linker script. Check the linker settings in the build configuration.'
